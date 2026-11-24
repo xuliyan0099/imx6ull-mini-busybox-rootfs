@@ -21,8 +21,10 @@ mkdir -p "$OUT"
 echo "== BusyBox =="
 make -C "$SRC/busybox" ARCH=arm CROSS_COMPILE="$CROSS" -j"$JOBS"
 
-R=$(mktemp -d "${TMPDIR:-/tmp}/im6-rootfs.XXXX")
-trap 'rm -rf "$R"' EXIT
+# 落盘保留安装树（$OUT/rootfs），既给 initramfs 打包，也给 SD 卡 ext4 镜像用
+R=$OUT/rootfs
+rm -rf "$R"
+mkdir -p "$R"
 make -C "$SRC/busybox" ARCH=arm CROSS_COMPILE="$CROSS" install CONFIG_PREFIX="$R" >/dev/null
 cp "$R/bin/busybox" "$OUT/busybox" 2>/dev/null || true
 
@@ -46,4 +48,5 @@ mkimage -A arm -O linux -T ramdisk -C gzip -n 'imx6ull mini initramfs' \
 
 echo
 ls -l "$OUT"
-sha256sum "$OUT"/*
+# $OUT 里还有 rootfs 安装树目录，只对文件算 sha256
+find "$OUT" -maxdepth 1 -type f -print0 | sort -z | xargs -0 -r sha256sum
